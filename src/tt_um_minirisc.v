@@ -1,72 +1,72 @@
+`default_nettype none
+`timescale 1ns / 1ps
+
 module tt_um_minirisc (
-  input  wire        clk,
-  input  wire        rst_n,
-  input  wire        ena,
-  input  wire [7:0]  ui_in,
-  input  wire [7:0]  uio_in,
-  output reg  [7:0]  uo_out,
-  output wire [7:0]  uio_out,
-  output wire [7:0]  uio_oe
+    input  wire [7:0] ui_in,    
+    output wire [7:0] uo_out,  
+    input  wire [7:0] uio_in,  
+    output wire [7:0] uio_out, 
+    output wire [7:0] uio_oe,  
+    input  wire       ena,     
+    input  wire       clk,     
+    input  wire       rst_n    
 );
 
-  // Internal registers
-  reg [7:0] acc;
-  reg [3:0] state;
+    localparam STATE_IDLE  = 4'h0;
+    localparam STATE_LOAD  = 4'h1;
+    localparam STATE_ADD   = 4'h2;
+    localparam STATE_SUB   = 4'h3;
+    localparam STATE_STORE = 4'h4;
 
-  // Dummy wire to mark uio_in as used
-  wire [7:0] unused_uio_in = uio_in;
+    reg [3:0] state;
+    reg [7:0] acc;
 
-  // Simple FSM states
-  localparam IDLE  = 4'd0;
-  localparam LOAD  = 4'd1;
-  localparam ADD   = 4'd2;
-  localparam STORE = 4'd3;
-  localparam DONE  = 4'd4;
+    always @(posedge clk or negedge rst_n) begin
+        if (!rst_n) begin
+            state <= STATE_IDLE;
+            acc   <= 8'h00;
+        end else if (!ena) begin
+            state <= STATE_IDLE;
+            acc   <= 8'h00;
+        end else begin
+            case (state)
+                STATE_IDLE: begin
+                    case (ui_in)
+                        8'h01: state <= STATE_LOAD;
+                        8'h02: state <= STATE_ADD;
+                        8'h03: state <= STATE_SUB;
+                        8'h04: state <= STATE_STORE;
+                        default: state <= STATE_IDLE; // NOP for 0x00
+                    endcase
+                end
 
-  // Drive uio_out and uio_oe to 0
-  assign uio_out = 8'd0;
-  assign uio_oe  = 8'd0;
+                STATE_LOAD: begin
+                    acc   <= ui_in;
+                    state <= STATE_IDLE;
+                end
 
-  // FSM logic
-  always @(posedge clk or negedge rst_n) begin
-    if (!rst_n) begin
-      acc <= 8'd0;
-      state <= IDLE;
-      uo_out <= 8'd0;
-    end else if (ena) begin
-      case(state)
-        IDLE: begin
-          acc <= 8'd0;
-          uo_out <= 8'd0;
-          if (ui_in != 8'd0)
-            state <= LOAD;
+                STATE_ADD: begin
+                    acc   <= acc + 8'h01;
+                    state <= STATE_IDLE;
+                end
+
+                STATE_SUB: begin
+                    acc   <= acc - 8'h01;
+                    state <= STATE_IDLE;
+                end
+
+                STATE_STORE: begin
+                    acc   <= acc;
+                    state <= STATE_IDLE;
+                end
+
+                default: state <= STATE_IDLE;
+            endcase
         end
-
-        LOAD: begin
-          acc <= ui_in;
-          uo_out <= acc;
-          state <= ADD;
-        end
-
-        ADD: begin
-          acc <= acc + 8'h08; // example addition
-          uo_out <= acc;
-          state <= STORE;
-        end
-
-        STORE: begin
-          uo_out <= acc;
-          state <= DONE;
-        end
-
-        DONE: begin
-          uo_out <= acc;
-          state <= IDLE; // auto-reset
-        end
-
-        default: state <= IDLE;
-      endcase
     end
-  end
+
+    assign uo_out  = acc;
+    assign uio_out = {4'h0, state};
+    assign uio_oe  = 8'hFF;
 
 endmodule
