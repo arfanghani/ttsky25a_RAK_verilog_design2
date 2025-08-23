@@ -6,11 +6,7 @@ module tt_um_minirisc (
   input  wire [7:0]  uio_in,
   output reg  [7:0]  uo_out,
   output wire [7:0]  uio_out,
-  output wire [7:0]  uio_oe,
-  
-  // New ports for internal monitoring
-  output wire [7:0]  acc_out,
-  output wire [3:0]  state_out
+  output wire [7:0]  uio_oe
 );
 
   // Internal registers
@@ -20,22 +16,18 @@ module tt_um_minirisc (
   // Dummy wire to mark uio_in as used
   wire [7:0] unused_uio_in = uio_in;
 
-  // Simple example FSM states
+  // Simple FSM states
   localparam IDLE  = 4'd0;
   localparam LOAD  = 4'd1;
   localparam ADD   = 4'd2;
   localparam STORE = 4'd3;
   localparam DONE  = 4'd4;
 
-  // For this example, uio_out and uio_oe are driven to 0
+  // Drive uio_out and uio_oe to 0
   assign uio_out = 8'd0;
   assign uio_oe  = 8'd0;
 
-  // Expose internal signals
-  assign acc_out   = acc;
-  assign state_out = state;
-
-  // Simple FSM example logic
+  // FSM logic
   always @(posedge clk or negedge rst_n) begin
     if (!rst_n) begin
       acc <= 8'd0;
@@ -69,7 +61,7 @@ module tt_um_minirisc (
 
         DONE: begin
           uo_out <= acc;
-          state <= IDLE; // auto-reset for next cycle
+          state <= IDLE; // auto-reset
         end
 
         default: state <= IDLE;
