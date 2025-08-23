@@ -1,40 +1,43 @@
-# SPDX-FileCopyrightText: © 2024 Tiny Tapeout
-# SPDX-License-Identifier: Apache-2.0
-
 import cocotb
 from cocotb.clock import Clock
 from cocotb.triggers import ClockCycles
 
-
 @cocotb.test()
-async def test_project(dut):
-    dut._log.info("Start")
+async def test_minirisc_repeated(dut):
+    dut._log.info("Starting repeated FSM CPU test")
 
-    # Set the clock period to 10 us (100 KHz)
-    clock = Clock(dut.clk, 10, units="us")
+    # Start 50 MHz clock (20 ns period)
+    clock = Clock(dut.clk, 20, units="ns")
     cocotb.start_soon(clock.start())
 
-    # Reset
-    dut._log.info("Reset")
+    # Reset DUT
+    dut.rst_n.value = 0
     dut.ena.value = 1
     dut.ui_in.value = 0
     dut.uio_in.value = 0
-    dut.rst_n.value = 0
-    await ClockCycles(dut.clk, 10)
+    await ClockCycles(dut.clk, 5)
     dut.rst_n.value = 1
-
-    dut._log.info("Test project behavior")
-
-    # Set the input values you want to test
-    dut.ui_in.value = 20
-    dut.uio_in.value = 30
-
-    # Wait for one clock cycle to see the output values
     await ClockCycles(dut.clk, 1)
 
-    # The following assersion is just an example of how to check the output values.
-    # Change it to match the actual expected output of your module:
-    assert dut.uo_out.value == 50
+    # Instruction program for FSM
+    program = [0x01, 0x02, 0x03, 0x04, 0x00]  # LOAD -> ADD -> SUB -> STORE -> HALT
 
-    # Keep testing the module by changing the input values, waiting for
-    # one or more clock cycles, and asserting the expected output values.
+    # Repeat the program multiple times
+    for repeat in range(5):  # repeat 5 times
+        dut._log.info(f"Starting program repeat {repeat+1}")
+        for cycle, instr in enumerate(program):
+            dut.ui_in.value = instr
+            await ClockCycles(dut.clk, 1)  # one clock cycle per instruction
+            dut._log.info(
+                f"Cycle {cycle} | Instr=0x{instr:02X} | "
+                f"uo_out=0x{int(dut.uo_out.value):02X} | "
+                f"acc_out=0x{int(dut.acc_out.value):02X} | "
+                f"state_out={int(dut.state_out.value)}"
+            )
+
+        # Insert idle cycles to clearly see return to IDLE
+        dut.ui_in.value = 0x00
+        await ClockCycles(dut.clk, 5)
+
+    dut._log.info("Simulation finished. Repeated FSM sequences completed.")
+
