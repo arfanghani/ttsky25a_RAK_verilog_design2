@@ -32,8 +32,19 @@ module tb ();
     forever #10 clk = ~clk;
   end
 
+  // Gate-level power pins: tie constants when performing GL simulation
+`ifdef GL_TEST
+  wire VPWR = 1'b1;
+  wire VGND = 1'b0;
+  // If the netlist uses other names (VPB, VNB, VDD, VSS) add those here similarly.
+`endif
+
   // DUT instantiation
   tt_um_minirisc user_project (
+`ifdef GL_TEST
+    .VPWR(VPWR), // <-- only if top-level wrapper has VPWR
+    .VGND(VGND), // <-- only if top-level wrapper has VGND
+`endif
     .clk(clk),
     .rst_n(rst_n),
     .ena(ena),
@@ -60,7 +71,7 @@ module tb ();
     ui_in_reg = 8'h04; #20;  // STORE
     ui_in_reg = 8'h00; #20;  // IDLE
 
-    #100; // extra cycles to observe final state
+    #100;
     $display("Simulation finished. Final uo_out=%02x", uo_out);
   end
 
