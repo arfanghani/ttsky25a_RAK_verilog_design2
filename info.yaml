@@ -1,7 +1,7 @@
 # Tiny Tapeout project information
 project:
   title:        "MiniRISC-FSM"      # Project title
-  author:       "AG_RAK"            # Your name
+  author:       "AGhani - Emirates Chips Competence - Design1" # Your name
   discord:      "N/A"                  # Your discord username
   description:  "Minimal RISC-style FSM core with LOAD, ADD, SUB, and STORE instructions"
   language:     "Verilog"
